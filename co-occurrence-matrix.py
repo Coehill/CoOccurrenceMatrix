@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from collections import defaultdict
 from collections import OrderedDict
 
@@ -34,7 +35,7 @@ coocc = df_asint.T.dot(df_asint)
 
 print(coocc)
 '''
-
+    
 '''
 There will be two arrays to begin with:
     1) photoIDArray: This will contain image names in the form of photoid's
@@ -102,4 +103,9 @@ dataFrameDictOrdered.move_to_end('Image_Key_2815', last=False)
 df = pd.DataFrame(dataFrameDictOrdered).set_index('Image_Key_2815')
 df_asint = df.astype(int)
 co_occurrence_matrix = df_asint.T.dot(df_asint)
-print(co_occurrence_matrix)
+
+# Set the co-occurrence values of 'X' with 'X' to be 0
+np.fill_diagonal(co_occurrence_matrix.values, 0)
+
+# export data frame to csv
+co_occurrence_matrix.to_csv('output.csv', sep=',', encoding='utf-8')
