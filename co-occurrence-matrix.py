@@ -109,3 +109,13 @@ np.fill_diagonal(co_occurrence_matrix.values, 0)
 
 # export data frame to csv
 co_occurrence_matrix.to_csv('output.csv', sep=',', encoding='utf-8')
+print("\nTask 1: The co-occurrence matrix has been generated and outputted to the file \"output.csv\"\n")
+
+# Find the top 5 tags for water
+print("Task 2: Compute the top 5 tags for Water, People and London.")
+print("\nWater: \n")
+print(co_occurrence_matrix.loc['water'].nlargest(5))
+print("\nPeople: \n")
+print(co_occurrence_matrix.loc['people'].nlargest(5))
+print("\nLondon: \n")
+print(co_occurrence_matrix.loc['london'].nlargest(5))
