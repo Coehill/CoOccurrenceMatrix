@@ -4,15 +4,19 @@ import math
 import csv
 from collections import defaultdict
 from collections import OrderedDict
+import string
     
-'''
-There will be two arrays to begin with:
-    1) photoIDArray: This will contain image names in the form of photoid's
-    2) tagStringArray: This will contain tag names in the form of tag strings
-    
+co_occurrence_matrix = None
+co_occurrence_matrix_pop_sig = None
 
-'''
 def main():
+    
+    global co_occurrence_matrix
+    global co_occurrence_matrix_pop_sig
+    
+    banner()
+    
+    print("Generating co-occurrence matrix...  ", end="")
     
     photoIDArray = [] # NOTE: photoIDArray will contain duplicates
     tagStringArray = [] # NOTE: tagStringArray will contain duplicates
@@ -35,12 +39,10 @@ def main():
         # Append the tag string in the current element to the dictionary at that photo id
         id_tag_dictionary[int(element[0])].append(element[1])
         
-    
     # The first item in the dictionary will be Image_Key_2815: [image id 1, image id 2, image id 3, ...]
     for photoid in id_tag_dictionary:
         dataFrameDict['Image_Key_2815'].append(int(photoid))
         
-    
     # iterate over all tags in tagStringArray; set is to remove duplicates
     for tag in list(set(tagStringArray)):
         for imageid in dataFrameDict['Image_Key_2815']:
@@ -52,7 +54,6 @@ def main():
             else:
                 dataFrameDict[tag].append(0)
                 
-    
     # Create an ordered dictionary from dataFrameDict, where Image_Key_2815 is at the start
     dataFrameDictOrdered = OrderedDict(dataFrameDict)
     dataFrameDictOrdered.move_to_end('Image_Key_2815', last=False)
@@ -65,19 +66,7 @@ def main():
     # Set the co-occurrence values of 'X' with 'X' to be 0
     np.fill_diagonal(co_occurrence_matrix.values, 0)
     
-    # export data frame to csv
-    co_occurrence_matrix.to_csv('output.csv', sep=',', encoding='utf-8')
-    print("\nTask 1: The co-occurrence matrix has been generated and outputted to the file \"output.csv\"\n")
-    
-    # Find the top 5 tags for water, people and london
-    print("Task 2: Compute the top 5 tags for Water, People and London.")
-    print("\nWater: \n")
-    print(co_occurrence_matrix.loc['water'].nlargest(5))
-    print("\nPeople: \n")
-    print(co_occurrence_matrix.loc['people'].nlargest(5))
-    print("\nLondon: \n")
-    print(co_occurrence_matrix.loc['london'].nlargest(5))
-    
+    co_occurrence_matrix_pop_sig = co_occurrence_matrix.copy()
     
     # Import tags.csv into a dictionary of tag : count
     d = {}
@@ -87,21 +76,93 @@ def main():
            d[key] = val
     
     i = len(set(photoIDArray)) # compute i for the IDF formula
+    photoIdArray = None # no longer needed
     
     # compute and apply IDF score for all tags
     for tag in set(tagStringArray):
         ix = int(d[tag])
         idf = math.log(i/ix)
-        co_occurrence_matrix.loc[tag, :] = co_occurrence_matrix.loc[tag, :] * idf
-        co_occurrence_matrix[tag] = co_occurrence_matrix[tag] * idf
+        co_occurrence_matrix_pop_sig.loc[tag, :] = co_occurrence_matrix_pop_sig.loc[tag, :] * idf
+        co_occurrence_matrix_pop_sig[tag] = co_occurrence_matrix_pop_sig[tag] * idf
+    tagStringArray = None #  no longer needed
+    
+    print("complete")
+    
+    export()
+    
+    tag_options()
         
-    # Find the top 5 tags for water, people and london after applying the IDF formula
-    print("\nTask 3: Recommend tags for water, people and London based on their popularity and significance.")
-    print("\nWater: \n")
-    print(co_occurrence_matrix.loc['water'].nlargest(5))
-    print("\nPeople: \n")
-    print(co_occurrence_matrix.loc['people'].nlargest(5))
-    print("\nLondon: \n")
-    print(co_occurrence_matrix.loc['london'].nlargest(5))
+    
+''' Print the top 5 tags which occur with water, people and london '''
+def recommend(com):
+    
+    flag = True
+    
+    while(flag):
+    
+        choice = input("\nWould you like to (a) choose a tag for recommendation, (b) use (water, people, london), or (q) quit?  (a/b/q)  ").lower()
+        
+        if (choice == 'a') | (choice == '(a)'):
+            choice = input('Enter a tag to receive recommendations or type \'q\' to quit.  ').lower()
+            if (choice == 'q') | (choice == 'quit'):
+                flag = false
+            else:
+                print('\n' +  choice + ': \n')
+                print(com.loc[choice].nlargest(5))
+        elif (choice == 'b') | (choice == '(b)'):
+            print("\nWater: \n")
+            print(com.loc['water'].nlargest(5))
+            print("\nPeople: \n")
+            print(com.loc['people'].nlargest(5))
+            print("\nLondon: \n")
+            print(com.loc['london'].nlargest(5))
+        elif (choice == 'q') | (choice == '(q)'):
+            flag = False
+        else:
+            flag = True
+
+    
+def banner():
+    print(" _______ _______ _______ _____    _______              \n" + 
+        "|   |   |     __|   _   |  |  |  |_     _|.---.-.-----.\n" + 
+"|       |__     |       |__    |   |   |  |  _  |  _  |\n" + 
+"|__|_|__|_______|___|___|  |__|    |___|  |___._|___  |\n" + 
+"                                                |_____|\n" + 
+" ______                                                    __         __   __              \n" + 
+"|   __ \.-----.----.-----.--------.--------.-----.-----.--|  |.---.-.|  |_|__|.-----.-----.\n" + 
+"|      <|  -__|  __|  _  |        |        |  -__|     |  _  ||  _  ||   _|  ||  _  |     |\n" + 
+"|___|__||_____|____|_____|__|__|__|__|__|__|_____|__|__|_____||___._||____|__||_____|__|__|\n" + 
+"                                                                                           \n" + 
+" _______               __                  \n" + 
+"|     __|.--.--.-----.|  |_.-----.--------.\n" + 
+"|__     ||  |  |__ --||   _|  -__|        |\n" + 
+"|_______||___  |_____||____|_____|__|__|__|\n" + 
+"         |_____|  ")
+    
+    
+def export():
+    global co_occurrence_matrix
+    
+    choice = input('Would you like to export the co-occurrence matrix to a .csv file? (y/n)  ')
+    
+    if (choice.lower() == 'y') | (choice.lower() == 'yes'):
+        
+        # export data frame to csv
+        co_occurrence_matrix.to_csv('output.csv', sep=',', encoding='utf-8')
+        print("The co-occurrence matrix has been outputted \"output.csv\"\n")
+        
+        
+def tag_options():
+    global co_occurrence_matrix
+    global co_occurrence_matrix_pop_sig
+    
+    choice = input('Would you like tag recommendations based on their popularity and significance? (y/n)  ')
+    if (choice.lower() == 'y') | (choice.lower() == 'yes'):
+        print('Recommending tags based on popularity and significance.')
+        recommend(co_occurrence_matrix_pop_sig)
+    else:
+        print('Recommending tags NOT based on popularity and significance.')
+        recommend(co_occurrence_matrix)
+    
     
 main()
